@@ -44,3 +44,10 @@ selected_fixture.py 仅提供有限本地 HTTP 来源，不含主列表解析、
 实现这条选择、采集、固定交付和独立复核链，保留全部原测试字节及旧接口。补充选择链状态归属的简短说明，以及覆盖上述公开边界的业务回归。selected_check.py 是已提供的联合场景入口，须在实现后通过；它在 V1 缺少 refresh_selected 时失败属于待开发能力，不是原有缺陷。该场景检查 A→B→A、同媒体多次选择、失败选择保全、固定失败重试、停服重开及真实导出，不替代其余公开边界的回归。
 
 沿现有 .pointwise-runtime.json 接通全部原回归和新联合核验，demo 展示真实版本切换、复用及固定证据，不只打印预设成功。清单仍采用现有 version=1、kind=cli、setup 为 argv 数组列表、verify/demo 各为 argv 数组的格式。原回归入口为 python3.11 -B verify.py；新增联合场景入口为 python3.11 -B selected_check.py，材料检查分别为 python3.11 -B selected_fixture.py --check-data 和 --http-check。
+
+## 选择链状态归属
+
+- 版本归属：登记来源不变；（登记来源，解析后的媒体请求 URI）唯一确定内部版本子来源，段身份、声明历史、就绪目录与当前修订都挂在子来源上。重定向不合并版本；异版本相同序号各自独立；同版本跨刷新复用段身份。
+- 当前选择：current_selection 是登记来源唯一的选择指针。refresh_selected 只有在主列表证据、策略、选择结果与媒体修订全部通过检查后，才原子写入回执并移动指针；任一步失败，原选择、各版本候选修订与历史声明保持不变。
+- 首次链：段首次就绪成功时在 ready_selection 登记当时选择，只插不改；freeze 把固定时选择身份写入 captures、把各段首次就绪选择身份钉入 capture_items。固定成果自包含，后续选择变化不回写旧段的首次来源。
+- 核账归属：Capture.source_id、source_url 始终为登记来源；Verifier 只依据已保存的回执、主列表原字节与媒体修订重算选择并核对段归属，不访问网络，也不用当前选择替代固定选择。直接媒体 V1 成果两处选择均为 None。

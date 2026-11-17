@@ -33,6 +33,14 @@ SCHEMA = (
        payload TEXT NOT NULL, PRIMARY KEY(capture,ordinal))''',
     '''CREATE TABLE IF NOT EXISTS verifications (
        id INTEGER PRIMARY KEY, capture TEXT NOT NULL, payload TEXT NOT NULL)''',
+    '''CREATE TABLE IF NOT EXISTS selections (
+       id TEXT PRIMARY KEY, source TEXT NOT NULL REFERENCES sources(id),
+       body BLOB NOT NULL, payload TEXT NOT NULL)''',
+    '''CREATE TABLE IF NOT EXISTS current_selection (
+       source TEXT PRIMARY KEY REFERENCES sources(id),
+       selection TEXT NOT NULL REFERENCES selections(id))''',
+    '''CREATE TABLE IF NOT EXISTS ready_selection (
+       k TEXT PRIMARY KEY, selection TEXT NOT NULL REFERENCES selections(id))''',
     'CREATE INDEX IF NOT EXISTS ready_order ON ready(source,d,m)',
     'CREATE INDEX IF NOT EXISTS revision_source ON revisions(source)',
 )

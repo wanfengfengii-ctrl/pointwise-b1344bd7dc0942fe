@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from liverecord.replay.snapshots import load_capture
 from liverecord.archive.objects import ObjectStore
+from liverecord.source.selections import SelectionStore
 from liverecord.timeline.revisions import RevisionStore
 from liverecord.verification.service import Verifier
 from liverecord.replay.export import export_capture
@@ -13,6 +14,7 @@ class ReplayItem:
     body: bytes
     playlist_body: bytes
     playlist_evidence: object
+    selection: object = None
 
     @property
     def start(self):
@@ -46,13 +48,16 @@ class Replay:
         report = Verifier(self.db).check(capture_id)
         if not report.ok:
             raise IntegrityError(canonical_report(report))
+        store = SelectionStore(self.db)
         items = []
         for fixed in capture.items:
             revision = RevisionStore(self.db).load(fixed.media.binding.revision_id)
+            first = (store.load(fixed.first_selection)
+                     if fixed.first_selection is not None else None)
             items.append(ReplayItem(fixed,
                                     ObjectStore(self.db).read_verified(
                                         fixed.media.object_id, fixed.media.length),
-                                    revision.body, revision.evidence))
+                                    revision.body, revision.evidence, first))
         return ReplayView(capture, tuple(items))
 
     def export(self, capture_id, target):

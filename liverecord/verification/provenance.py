@@ -3,6 +3,7 @@ from liverecord.archive.catalog import Catalog
 from liverecord.timeline.revisions import RevisionStore
 from liverecord.source.registry import Sources
 from liverecord.source.responses import sha256
+from liverecord.source.selections import version_source_id
 from liverecord.acquisition.ranges import validate_range_response
 from liverecord.acquisition.validation import decode_expected_digest
 from liverecord.source.responses import header_values
@@ -20,10 +21,17 @@ def check_provenance(db, capture, item):
     declaration = media.declaration
     identity = declaration.identity
     try:
-        if identity.source_id != capture.source_id:
+        if capture.selection is None:
+            expected_source = capture.source_id
+            playlist_url = capture.source_url
+        else:
+            expected_source = version_source_id(capture.source_id,
+                                                capture.selection['media_url'])
+            playlist_url = capture.selection['media_url']
+        if identity.source_id != expected_source:
             raise ValueError('capture source mismatch')
         source = Sources(db).get(identity.source_id)
-        if source.url != capture.source_url:
+        if source.url != playlist_url:
             raise ValueError('source registration mismatch')
         store = RevisionStore(db)
         revision = store.load(media.binding.revision_id)
@@ -32,7 +40,7 @@ def check_provenance(db, capture, item):
                 or store.declaration(identity) != declaration):
             raise ValueError('declaration binding mismatch')
         if (evidence.sha256 != sha256(revision.body) or evidence.length != len(revision.body)
-                or evidence.requested_url != capture.source_url or evidence.status != 200
+                or evidence.requested_url != playlist_url or evidence.status != 200
                 or evidence.request_range is not None):
             raise ValueError('playlist evidence mismatch')
         current = Catalog(db).get_ready(identity)

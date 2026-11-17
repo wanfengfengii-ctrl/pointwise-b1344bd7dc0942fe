@@ -25,3 +25,12 @@ def plan_missing(db, source_id):
                   for declaration in revision.declarations
                   if catalog.get_ready(declaration.identity) is None)
     return CollectionPlan(source_id, revision_id, items)
+
+
+def plan_revision(db, source_id, revision_id):
+    revision = RevisionStore(db).load(revision_id)
+    catalog = Catalog(db)
+    items = tuple(AcquisitionItem(revision_id, declaration)
+                  for declaration in revision.declarations
+                  if catalog.get_ready(declaration.identity) is None)
+    return CollectionPlan(source_id, revision_id, items)

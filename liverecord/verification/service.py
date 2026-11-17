@@ -1,8 +1,9 @@
 from dataclasses import dataclass
-from liverecord.replay.snapshots import load_capture
-from liverecord.source.responses import canonical, sha256
+from liverecord.replay.snapshots import load_capture, input_fingerprint
+from liverecord.source.responses import canonical
 from liverecord.verification.media import check_media
 from liverecord.verification.provenance import check_provenance
+from liverecord.verification.selection import check_capture_selection, check_ready_selection
 from liverecord.verification.timeline import check_timeline
 
 
@@ -43,18 +44,23 @@ class Verifier:
             capture = load_capture(self.db, capture_id)
             timeline = check_timeline(capture)
             diagnostics.append(Diagnostic('timeline', None, timeline.ok, timeline.detail))
-            payload = dict(source=capture.source_id, url=capture.source_url,
-                           media=[i.media.to_dict() for i in capture.items])
-            matches = sha256(canonical(payload).encode()) == capture.fingerprint
+            selection_id = (capture.selection['selection_id']
+                            if capture.selection is not None else None)
+            matches = (input_fingerprint(capture.source_id, capture.source_url,
+                                         [i.media for i in capture.items], selection_id)
+                       == capture.fingerprint)
             diagnostics.append(Diagnostic('binding', None, matches, 'fixed input fingerprint'))
             from liverecord.source.registry import Sources
             source_matches = Sources(self.db).get(capture.source_id).url == capture.source_url
             diagnostics.append(Diagnostic('provenance', None, source_matches,
                                           'fixed source registration'))
+            fixed = check_capture_selection(self.db, capture)
+            diagnostics.append(Diagnostic('selection', None, fixed.ok, fixed.detail))
             for item in capture.items:
                 for category, result in (
                         ('media', check_media(self.db, item)),
-                        ('provenance', check_provenance(self.db, capture, item))):
+                        ('provenance', check_provenance(self.db, capture, item)),
+                        ('selection', check_ready_selection(self.db, capture, item))):
                     diagnostics.append(Diagnostic(category, result.identity,
                                                   result.ok, result.detail))
         except Exception as exc:

@@ -5,6 +5,7 @@ import os
 import shutil
 import tempfile
 from liverecord.archive.objects import ObjectStore
+from liverecord.source.selections import SelectionStore, encode_selection
 from liverecord.timeline.revisions import RevisionStore
 from liverecord.replay.snapshots import load_capture
 from liverecord.source.errors import ExportConflict, IntegrityError
@@ -28,6 +29,7 @@ def export_capture(db, capture_id, target, checkpoint=None):
     staging = Path(tempfile.mkdtemp(prefix='.liverecord-export-', dir=target.parent))
     try:
         manifest = capture.to_dict()
+        selections = SelectionStore(db)
         for ordinal, item in enumerate(capture.items):
             prefix = str(ordinal).zfill(6)
             body = ObjectStore(db).read_verified(item.media.object_id, item.media.length)
@@ -38,8 +40,16 @@ def export_capture(db, capture_id, target, checkpoint=None):
                 json.dumps(dict(binding=item.media.binding.to_dict(),
                                 playlist=revision.evidence.to_dict()),
                            sort_keys=True, indent=2), encoding='utf-8')
+            if item.first_selection is not None:
+                (staging / (prefix + '.selection.json')).write_text(
+                    json.dumps(encode_selection(selections.load(item.first_selection)),
+                               sort_keys=True, indent=2), encoding='utf-8')
             if checkpoint:
                 checkpoint('export_item')
+        if capture.selection is not None:
+            (staging / 'selection.json').write_text(
+                json.dumps(encode_selection(capture.selection), sort_keys=True, indent=2),
+                encoding='utf-8')
         (staging / 'manifest.json').write_text(
             json.dumps(manifest, sort_keys=True, indent=2), encoding='utf-8')
         if checkpoint:
