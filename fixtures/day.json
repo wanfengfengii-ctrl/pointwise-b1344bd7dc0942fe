@@ -1,0 +1,7 @@
+{
+  "blob": "ABCDEFGHI",
+  "tail": "JKLMNO",
+  "playlist": "#EXTM3U\n#EXT-X-VERSION:7\n#EXT-X-TARGETDURATION:1\n#EXT-X-MEDIA-SEQUENCE:40\n#EXTINF:0.125,first\n#EXT-X-BYTERANGE:4@0\nblob\n#EXTINF:0.375,second\n#EXT-X-BYTERANGE:5\nblob\n#EXTINF:0.5,third\ntail\n",
+  "expected_ranges": ["ABCD", "EFGHI"],
+  "expected_total_seconds": [1, 1]
+}
